@@ -1,0 +1,233 @@
+@model AachSavor.Models.BaoCaoViewModel
+@{
+    ViewData["Title"] = "Báo cáo Doanh thu & Thống kê";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-graph-up-arrow text-warning me-2"></i>Báo cáo Doanh thu & Thống kê
+        </h2>
+        <p class="text-muted mb-0">Phân tích tình hình kinh doanh, dòng tiền thanh toán và top sản phẩm bán chạy</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> In báo cáo
+        </button>
+    </div>
+</div>
+
+<!-- Bộ lọc thời gian (Theo ngày / tháng) -->
+<div class="card card-custom p-3 mb-4">
+    <form method="get" action="/BaoCao" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold text-muted">Từ ngày:</label>
+            <input type="date" name="tuNgay" class="form-control" value="@Model.TuNgay.ToString("yyyy-MM-dd")">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold text-muted">Đến ngày:</label>
+            <input type="date" name="denNgay" class="form-control" value="@Model.DenNgay.ToString("yyyy-MM-dd")">
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-brand w-100 fw-bold">
+                <i class="bi bi-funnel me-1"></i> Xem báo cáo
+            </button>
+        </div>
+        <div class="col-md-3">
+            <div class="btn-group w-100">
+                <a href="/BaoCao?tuNgay=@DateTime.Today.ToString("yyyy-MM-dd")&denNgay=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm">Hôm nay</a>
+                <a href="/BaoCao?tuNgay=@DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd")&denNgay=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm">7 ngày</a>
+                <a href="/BaoCao?tuNgay=@DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd")&denNgay=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm">30 ngày</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- 4 Thẻ tổng quan chỉ số (KPIs theo tài liệu hình 5.6) -->
+<div class="row g-3 mb-4 text-center">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-custom p-3 border-0 bg-primary text-white shadow-sm">
+            <div class="small text-white-50 text-uppercase fw-semibold">Tổng doanh thu</div>
+            <h3 class="fw-bold my-1">@Model.TongDoanhThu.ToString("N0") đ</h3>
+            <small class="text-white-75"><i class="bi bi-wallet2"></i> Tự động cộng dồn</small>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-custom p-3 border-0 bg-success text-white shadow-sm">
+            <div class="small text-white-50 text-uppercase fw-semibold">Tiền mặt</div>
+            <h3 class="fw-bold my-1">@Model.DoanhThuTienMat.ToString("N0") đ</h3>
+            <small class="text-white-75">
+                @(Model.TongDoanhThu > 0 ? (Model.DoanhThuTienMat * 100 / Model.TongDoanhThu).ToString("N1") : "0")% tổng tiền
+            </small>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-custom p-3 border-0 bg-info text-dark shadow-sm">
+            <div class="small text-dark-50 text-uppercase fw-semibold">Chuyển khoản (VietQR)</div>
+            <h3 class="fw-bold my-1">@Model.DoanhThuChuyenKhoan.ToString("N0") đ</h3>
+            <small class="text-dark-75">
+                @(Model.TongDoanhThu > 0 ? (Model.DoanhThuChuyenKhoan * 100 / Model.TongDoanhThu).ToString("N1") : "0")% tổng tiền
+            </small>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-custom p-3 border-0 bg-dark text-white shadow-sm">
+            <div class="small text-white-50 text-uppercase fw-semibold">Số đơn hàng đã bán</div>
+            <h3 class="fw-bold my-1">@Model.TongSoDonHang đơn</h3>
+            <small class="text-white-75"><i class="bi bi-receipt"></i> Giao dịch thành công</small>
+        </div>
+    </div>
+</div>
+
+<!-- Biểu đồ phân tích doanh thu trực quan (Chart.js) -->
+<div class="card card-custom p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-dark mb-0">
+            <i class="bi bi-bar-chart-line-fill text-warning me-2"></i>Biểu đồ Diễn biến Doanh thu theo Ngày
+        </h5>
+        <span class="badge bg-light text-muted border">Chart.js Visual</span>
+    </div>
+    <div style="height: 320px;">
+        <canvas id="revenueChart"></canvas>
+    </div>
+</div>
+
+<!-- Bảng Top Sản phẩm bán chạy (Hình 5.6 theo tài liệu) -->
+<div class="card card-custom overflow-hidden">
+    <div class="card-header bg-white py-3 border-0">
+        <h5 class="card-title fw-bold text-dark mb-0">
+            <i class="bi bi-trophy-fill text-warning me-2"></i>Top Sản phẩm bán chạy nhất
+        </h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-custom table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 70px;" class="text-center">Top</th>
+                    <th style="width: 100px;">Mã SP</th>
+                    <th>Tên sản phẩm nguyên liệu</th>
+                    <th class="text-center">Số lượng đã bán</th>
+                    <th class="text-end">Doanh thu đem lại</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.TopSanPham.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            Chưa có dữ liệu bán hàng trong khoảng thời gian này.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    int rank = 1;
+                    @foreach (var item in Model.TopSanPham)
+                    {
+                        <tr>
+                            <td class="text-center">
+                                @if (rank == 1)
+                                {
+                                    <span class="badge bg-danger rounded-circle p-2 fs-6 shadow-sm">🥇 1</span>
+                                }
+                                else if (rank == 2)
+                                {
+                                    <span class="badge bg-warning text-dark rounded-circle p-2 fs-6 shadow-sm">🥈 2</span>
+                                }
+                                else if (rank == 3)
+                                {
+                                    <span class="badge bg-secondary rounded-circle p-2 fs-6 shadow-sm">🥉 3</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-muted border">@rank</span>
+                                }
+                            </td>
+                            <td><span class="badge bg-light text-dark border fw-bold">@item.MaSP</span></td>
+                            <td class="fw-bold text-dark">@item.TenSP</td>
+                            <td class="text-center">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-bold fs-7">
+                                    @item.SoLuongDaBan
+                                </span>
+                            </td>
+                            <td class="text-end fw-bold text-danger fs-6">
+                                @item.DoanhThu.ToString("N0") đ
+                            </td>
+                        </tr>
+                        rank++;
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        const dailyData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DoanhThuTheoNgay));
+
+        const labels = dailyData.map(d => d.Ngay);
+        const revenue = dailyData.map(d => d.DoanhThu);
+        const cash = dailyData.map(d => d.TienMat);
+        const transfer = dailyData.map(d => d.ChuyenKhoan);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.length > 0 ? labels : ['Hôm nay'],
+                datasets: [
+                    {
+                        label: 'Tiền mặt (đ)',
+                        data: cash.length > 0 ? cash : [0],
+                        backgroundColor: 'rgba(22, 163, 74, 0.75)',
+                        borderColor: '#16a34a',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Chuyển khoản (đ)',
+                        data: transfer.length > 0 ? transfer : [0],
+                        backgroundColor: 'rgba(14, 165, 233, 0.75)',
+                        borderColor: '#0ea5e9',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('vi-VN') + ' đ';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString('vi-VN') + ' đ';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+}

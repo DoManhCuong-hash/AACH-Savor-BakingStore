@@ -1,0 +1,376 @@
+@model List<AachSavor.Models.PhieuNhap>
+@{
+    ViewData["Title"] = "Quản lý Nhập kho";
+    var sanPhams = ViewBag.SanPhams as List<AachSavor.Models.SanPham> ?? new List<AachSavor.Models.SanPham>();
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-box-arrow-in-down text-warning me-2"></i>Quản lý Phiếu Nhập Kho
+        </h2>
+        <p class="text-muted mb-0">Theo dõi nguồn cung cấp nguyên liệu làm bánh và cập nhật tự động số lượng tồn kho</p>
+    </div>
+    <button class="btn btn-brand shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalTaoPhieuNhap" onclick="initTaoPhieuNhap()">
+        <i class="bi bi-plus-circle-fill"></i> Tạo phiếu nhập mới
+    </button>
+</div>
+
+<!-- Thẻ thống kê nhập kho nhanh -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card card-custom p-3 border-start border-4 border-primary">
+            <div class="small text-muted fw-semibold">Tổng số phiếu nhập</div>
+            <div class="fs-4 fw-bold text-dark">@Model.Count phiếu</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom p-3 border-start border-4 border-success">
+            <div class="small text-muted fw-semibold">Tổng giá trị nhập kho</div>
+            <div class="fs-4 fw-bold text-success">@Model.Sum(p => p.TongTien).ToString("N0") đ</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom p-3 border-start border-4 border-warning">
+            <div class="small text-muted fw-semibold">Phiếu nhập gần nhất</div>
+            <div class="fs-4 fw-bold text-dark">@(Model.FirstOrDefault()?.NgayNhap.ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</div>
+        </div>
+    </div>
+</div>
+
+<!-- Bảng danh sách phiếu nhập kho -->
+<div class="card card-custom overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-custom table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 100px;">Mã Phiếu</th>
+                    <th>Ngày nhập</th>
+                    <th>Nhân viên lập phiếu</th>
+                    <th>Nhà cung cấp</th>
+                    <th>Ghi chú</th>
+                    <th class="text-end">Tổng tiền nhập</th>
+                    <th class="text-center" style="width: 130px;">Chi tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-box2 fs-1 d-block mb-2"></i>
+                            Chưa có phiếu nhập kho nào được tạo.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var pn in Model)
+                    {
+                        <tr>
+                            <td><span class="badge bg-light text-dark border fw-bold">PN@pn.PhieuNhapID.ToString("D4")</span></td>
+                            <td>@pn.NgayNhap.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <div class="fw-semibold text-dark">@(pn.NhanVien?.TenNV ?? "Nhân viên")</div>
+                            </td>
+                            <td>@(pn.NhaCungCap ?? "Nhà cung cấp chính")</td>
+                            <td class="text-muted small">@(pn.GhiChu ?? "-")</td>
+                            <td class="text-end fw-bold text-dark">@pn.TongTien.ToString("N0") đ</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewDetail(@pn.PhieuNhapID)">
+                                    <i class="bi bi-eye"></i> Xem chi tiết
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Tạo Phiếu Nhập Mới -->
+<div class="modal fade" id="modalTaoPhieuNhap" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-box-arrow-in-down text-warning me-2"></i> Tạo Phiếu Nhập Kho Nguyên Liệu
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Nhà cung cấp <span class="text-danger">*</span></label>
+                        <input type="text" id="txtNhaCungCap" class="form-control" placeholder="VD: Công ty Nhất Hương / NPP Anchor New Zealand" value="Công ty TNHH Nhất Hương" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ghi chú phiếu nhập</label>
+                        <input type="text" id="txtGhiChuNhap" class="form-control" placeholder="Nhập định kỳ, hàng mẫu, bổ sung..." />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-check me-1"></i> Danh sách mặt hàng nhập kho:</h6>
+                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill fw-semibold" onclick="addReceiptRow()">
+                        <i class="bi bi-plus-lg"></i> Thêm sản phẩm nhập
+                    </button>
+                </div>
+
+                <div class="table-responsive border rounded-3 mb-3">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th style="width: 40%;">Sản phẩm</th>
+                                <th style="width: 20%;">Số lượng nhập</th>
+                                <th style="width: 20%;">Đơn giá nhập (đ)</th>
+                                <th style="width: 15%;" class="text-end">Thành tiền</th>
+                                <th style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tblReceiptItemsBody">
+                            <!-- Rows added dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end align-items-center gap-3 fs-5">
+                    <span class="fw-semibold text-muted">Tổng tiền phiếu nhập:</span>
+                    <span id="lblReceiptGrandTotal" class="fw-bold text-danger fs-4">0 đ</span>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy bỏ</button>
+                <button type="button" class="btn btn-brand rounded-pill px-4 fw-bold" onclick="submitPhieuNhap()">
+                    <i class="bi bi-check-circle me-1"></i> Xác nhận & Cập nhật tồn kho
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xem Chi Tiết Phiếu Nhập -->
+<div class="modal fade" id="modalDetailPhieuNhap" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-file-earmark-text text-warning me-2"></i> Chi Tiết Phiếu Nhập: <span id="dtlMaPN"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-2 mb-3 bg-light p-3 rounded-3 border">
+                    <div class="col-sm-6"><strong>Ngày nhập:</strong> <span id="dtlNgayNhap"></span></div>
+                    <div class="col-sm-6"><strong>Nhân viên:</strong> <span id="dtlNhanVien"></span></div>
+                    <div class="col-sm-6"><strong>Nhà cung cấp:</strong> <span id="dtlNhaCungCap"></span></div>
+                    <div class="col-sm-6"><strong>Ghi chú:</strong> <span id="dtlGhiChu"></span></div>
+                </div>
+
+                <div class="table-responsive border rounded-3 mb-3">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mã SP</th>
+                                <th>Tên sản phẩm</th>
+                                <th>ĐVT</th>
+                                <th class="text-center">Số lượng</th>
+                                <th class="text-end">Đơn giá nhập</th>
+                                <th class="text-end">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dtlItemsBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="text-end fs-5">
+                    <strong>Tổng tiền: </strong>
+                    <span id="dtlTongTien" class="text-danger fw-bold"></span>
+                </div>
+            </div>
+            <div class="modal-footer bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const availableProducts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sanPhams.Select(s => new {
+            id = s.SanPhamID,
+            ma = s.MaSP,
+            ten = s.TenSP,
+            dvt = s.DonViTinh,
+            giaNhap = s.GiaNhap
+        })));
+
+        let receiptRows = [];
+
+        function initTaoPhieuNhap() {
+            receiptRows = [];
+            addReceiptRow();
+        }
+
+        function addReceiptRow() {
+            const rowId = Date.now() + Math.random();
+            const firstSp = availableProducts[0] || { id: 0, giaNhap: 0 };
+            receiptRows.push({
+                rowId: rowId,
+                sanPhamId: firstSp.id,
+                soLuong: 10,
+                donGia: firstSp.giaNhap
+            });
+            renderReceiptRows();
+        }
+
+        function removeReceiptRow(rowId) {
+            receiptRows = receiptRows.filter(r => r.rowId !== rowId);
+            if (receiptRows.length === 0) {
+                addReceiptRow();
+            } else {
+                renderReceiptRows();
+            }
+        }
+
+        function onProductChange(rowId, selectElem) {
+            const spId = parseInt(selectElem.value);
+            const found = availableProducts.find(p => p.id === spId);
+            const row = receiptRows.find(r => r.rowId === rowId);
+            if (row && found) {
+                row.sanPhamId = spId;
+                row.donGia = found.giaNhap;
+                renderReceiptRows();
+            }
+        }
+
+        function onRowFieldChange(rowId, field, val) {
+            const row = receiptRows.find(r => r.rowId === rowId);
+            if (row) {
+                row[field] = parseFloat(val) || 0;
+                renderReceiptRows();
+            }
+        }
+
+        function renderReceiptRows() {
+            const tbody = document.getElementById('tblReceiptItemsBody');
+            tbody.innerHTML = '';
+
+            let grandTotal = 0;
+
+            receiptRows.forEach(row => {
+                const lineTotal = row.soLuong * row.donGia;
+                grandTotal += lineTotal;
+
+                let optionsHtml = '';
+                availableProducts.forEach(p => {
+                    const selected = p.id === row.sanPhamId ? 'selected' : '';
+                    optionsHtml += `<option value="${p.id}" ${selected}>[${p.ma}] ${p.ten} (${p.dvt})</option>`;
+                });
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <select class="form-select form-select-sm" onchange="onProductChange(${row.rowId}, this)">
+                            ${optionsHtml}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" min="1" class="form-control form-control-sm text-center fw-bold" value="${row.soLuong}" onchange="onRowFieldChange(${row.rowId}, 'soLuong', this.value)">
+                    </td>
+                    <td>
+                        <input type="number" step="1000" min="0" class="form-control form-control-sm text-end" value="${row.donGia}" onchange="onRowFieldChange(${row.rowId}, 'donGia', this.value)">
+                    </td>
+                    <td class="text-end fw-bold text-dark">
+                        ${lineTotal.toLocaleString('vi-VN')} đ
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm text-danger p-0 border-0" onclick="removeReceiptRow(${row.rowId})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('lblReceiptGrandTotal').innerText = grandTotal.toLocaleString('vi-VN') + ' đ';
+        }
+
+        async function submitPhieuNhap() {
+            const ncc = document.getElementById('txtNhaCungCap').value.trim();
+            const note = document.getElementById('txtGhiChuNhap').value.trim();
+
+            if (!ncc) {
+                alert('Vui lòng nhập tên nhà cung cấp!');
+                return;
+            }
+
+            const payload = {
+                NhaCungCap: ncc,
+                GhiChu: note,
+                Items: receiptRows.map(r => ({
+                    SanPhamID: r.sanPhamId,
+                    SoLuongNhap: r.soLuong,
+                    DonGiaNhap: r.donGia
+                }))
+            };
+
+            try {
+                const response = await fetch('/NhapKho/Create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    alert('Lỗi máy chủ (' + response.status + '): Không thể lập phiếu nhập kho.');
+                    return;
+                }
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            } catch (err) {
+                alert('Lỗi kết nối máy chủ: ' + err);
+            }
+        }
+
+        async function viewDetail(id) {
+            try {
+                const res = await fetch('/NhapKho/GetDetailJson?id=' + id);
+                const data = await res.json();
+
+                document.getElementById('dtlMaPN').innerText = data.maPN;
+                document.getElementById('dtlNgayNhap').innerText = data.ngayNhap;
+                document.getElementById('dtlNhanVien').innerText = data.nhanVien;
+                document.getElementById('dtlNhaCungCap').innerText = data.nhaCungCap;
+                document.getElementById('dtlGhiChu').innerText = data.ghiChu || '-';
+                document.getElementById('dtlTongTien').innerText = data.tongTien.toLocaleString('vi-VN') + ' đ';
+
+                const tbody = document.getElementById('dtlItemsBody');
+                tbody.innerHTML = '';
+                data.items.forEach(it => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><span class="badge bg-light text-dark border">${it.maSP}</span></td>
+                        <td class="fw-semibold">${it.tenSP}</td>
+                        <td>${it.donViTinh}</td>
+                        <td class="text-center fw-bold">${it.soLuong}</td>
+                        <td class="text-end">${it.donGia.toLocaleString('vi-VN')} đ</td>
+                        <td class="text-end fw-bold text-danger">${it.thanhTien.toLocaleString('vi-VN')} đ</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                new bootstrap.Modal(document.getElementById('modalDetailPhieuNhap')).show();
+            } catch (err) {
+                alert('Không thể tải chi tiết phiếu nhập: ' + err);
+            }
+        }
+    </script>
+}

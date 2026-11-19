@@ -1,0 +1,152 @@
+@model AachSavor.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng nhập - AACH Savor Baking Store</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5.3 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #1c1917 0%, #292524 50%, #451a03 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .login-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+            max-width: 440px;
+            width: 100%;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .login-header {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            padding: 2.25rem 2rem 1.75rem;
+            text-align: center;
+            border-bottom: 2px solid #f59e0b;
+        }
+        .btn-brand-login {
+            background: linear-gradient(135deg, #854d0e 0%, #713f12 100%);
+            color: #ffffff;
+            font-weight: 700;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem;
+            transition: all 0.2s ease;
+        }
+        .btn-brand-login:hover {
+            background: linear-gradient(135deg, #713f12 0%, #542d0c 100%);
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(113, 63, 18, 0.35);
+        }
+        .quick-btn {
+            border: 1px dashed #d97706;
+            background-color: #fffbeb;
+            color: #92400e;
+            font-size: 0.825rem;
+            font-weight: 600;
+            border-radius: 10px;
+            padding: 0.45rem 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-btn:hover {
+            background-color: #fef3c7;
+            border-color: #b45309;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="login-header">
+            <div class="display-5 mb-2">🥐</div>
+            <h3 class="fw-bold text-dark mb-1">AACH Savor</h3>
+            <p class="text-secondary small mb-0">Hệ thống Quản lý Bán lẻ & Kho Đồ Làm Bánh</p>
+        </div>
+
+        <div class="p-4 p-md-4">
+            @if (!string.IsNullOrEmpty(Model?.ErrorMessage))
+            {
+                <div class="alert alert-danger py-2 px-3 small rounded-3 d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-exclamation-circle-fill fs-6"></i>
+                    <div>@Model.ErrorMessage</div>
+                </div>
+            }
+
+            <form method="post" action="/Account/Login">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-dark small">Tên đăng nhập</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+                        <input type="text" name="TenDangNhap" id="txtUsername" class="form-control border-start-0" placeholder="admin hoặc staff" required value="@Model?.TenDangNhap" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-dark small">Mật khẩu</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                        <input type="password" name="MatKhau" id="txtPassword" class="form-control border-start-0" placeholder="Nhập mật khẩu..." required value="@Model?.MatKhau" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="RememberMe" id="chkRemember" value="true" checked>
+                        <label class="form-check-label small text-muted" for="chkRemember">Ghi nhớ đăng nhập</label>
+                    </div>
+                    <span class="badge bg-light text-secondary border small">Phiên bản 2026</span>
+                </div>
+
+                <button type="submit" class="btn btn-brand-login w-100 shadow-sm mb-3">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập hệ thống
+                </button>
+            </form>
+
+            <!-- Gợi ý đăng nhập nhanh cho người dùng / tester -->
+            <div class="p-3 bg-light rounded-3 border">
+                <div class="small fw-bold text-muted mb-2 text-center"><i class="bi bi-lightning-charge-fill text-warning"></i> Tài khoản mẫu dùng thử:</div>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="quick-btn" onclick="fillAccount('admin', '123456')">
+                        <i class="bi bi-shield-check"></i> Admin (Toàn quyền)
+                    </button>
+                    <button type="button" class="quick-btn" onclick="fillAccount('staff', '123456')">
+                        <i class="bi bi-cart"></i> Staff (Bán hàng)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-light px-4 py-3 text-center border-top">
+            <small class="text-muted">AACH Savor &bull; Cửa hàng Bán Đồ Làm Bánh</small>
+        </div>
+    </div>
+
+    <script>
+        function fillAccount(u, p) {
+            document.getElementById('txtUsername').value = u;
+            document.getElementById('txtPassword').value = p;
+        }
+    </script>
+</body>
+</html>

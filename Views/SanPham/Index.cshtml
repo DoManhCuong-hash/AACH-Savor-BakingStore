@@ -1,0 +1,280 @@
+@model List<AachSavor.Models.SanPham>
+@{
+    ViewData["Title"] = "Quản lý Sản phẩm";
+    var isAdmin = User.IsInRole("Admin");
+    var currentCat = ViewBag.DanhMuc as string;
+    var currentKeyword = ViewBag.Keyword as string;
+    var sapHetHang = ViewBag.SapHetHang as bool? ?? false;
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-box-seam text-warning me-2"></i>Quản lý Danh mục Sản phẩm
+        </h2>
+        <p class="text-muted mb-0">Theo dõi danh sách nguyên liệu, giá bán lẻ, giá bán sỉ và số lượng tồn kho</p>
+    </div>
+    @if (isAdmin)
+    {
+        <button class="btn btn-brand shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalSanPham" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle-fill"></i> Thêm sản phẩm mới
+        </button>
+    }
+</div>
+
+<!-- Thanh tìm kiếm & Bộ lọc -->
+<div class="card card-custom p-3 mb-4">
+    <form method="get" action="/SanPham" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="keyword" class="form-control" placeholder="Tìm kiếm theo mã (SP001...) hoặc tên sản phẩm..." value="@currentKeyword">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="danhMuc" class="form-select" onchange="this.form.submit()">
+                <option value="">-- Tất cả danh mục --</option>
+                <option value="Bột & Men nở" selected="@(currentCat == "Bột & Men nở")">Bột & Men nở</option>
+                <option value="Socola & Cacao" selected="@(currentCat == "Socola & Cacao")">Socola & Cacao</option>
+                <option value="Bơ sữa & Kem" selected="@(currentCat == "Bơ sữa & Kem")">Bơ sữa & Kem</option>
+                <option value="Đường & Phụ gia" selected="@(currentCat == "Đường & Phụ gia")">Đường & Phụ gia</option>
+                <option value="Khuôn & Dụng cụ" selected="@(currentCat == "Khuôn & Dụng cụ")">Khuôn & Dụng cụ</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="sapHetHang" value="true" id="chkSapHet" @(sapHetHang ? "checked" : "") onchange="this.form.submit()">
+                <label class="form-check-label small fw-semibold text-danger" for="chkSapHet">
+                    Sắp hết (≤ 20)
+                </label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-dark w-100 fw-semibold">Lọc</button>
+            <a href="/SanPham" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Bảng hiển thị danh sách sản phẩm -->
+<div class="card card-custom overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-custom table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 90px;">Mã SP</th>
+                    <th>Tên sản phẩm</th>
+                    <th>ĐVT</th>
+                    <th>Danh mục</th>
+                    <th class="text-end">Giá nhập</th>
+                    <th class="text-end">Giá bán lẻ</th>
+                    <th class="text-end">Giá bán sỉ (≥10)</th>
+                    <th class="text-center">Tồn kho</th>
+                    @if (isAdmin)
+                    {
+                        <th class="text-center" style="width: 130px;">Thao tác</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Không tìm thấy sản phẩm nào phù hợp với bộ lọc!
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var sp in Model)
+                    {
+                        <tr>
+                            <td><span class="badge bg-light text-dark border fw-bold">@sp.MaSP</span></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fs-4">@(sp.HinhAnh ?? "📦")</span>
+                                    <div>
+                                        <div class="fw-bold text-dark">@sp.TenSP</div>
+                                        <small class="text-muted">Mã vạch / SKU: @sp.MaSP</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-secondary-subtle text-secondary-emphasis">@sp.DonViTinh</span></td>
+                            <td><small class="badge bg-light text-secondary border">@sp.DanhMuc</small></td>
+                            <td class="text-end text-muted small">@sp.GiaNhap.ToString("N0") đ</td>
+                            <td class="text-end fw-bold text-dark">@sp.GiaLe.ToString("N0") đ</td>
+                            <td class="text-end fw-bold text-success">@sp.GiaSi.ToString("N0") đ</td>
+                            <td class="text-center">
+                                @if (sp.TonKho <= 15)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill fw-bold">
+                                        @sp.TonKho (Thấp)
+                                    </span>
+                                }
+                                else if (sp.TonKho <= 30)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill fw-bold">
+                                        @sp.TonKho
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-bold">
+                                        @sp.TonKho
+                                    </span>
+                                }
+                            </td>
+                            @if (isAdmin)
+                            {
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-warning" title="Chỉnh sửa" onclick="openEditModal(@sp.SanPhamID, '@sp.MaSP', '@sp.TenSP', '@sp.DonViTinh', '@sp.DanhMuc', @sp.GiaNhap, @sp.GiaLe, @sp.GiaSi, @sp.TonKho, '@sp.HinhAnh')">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" title="Xóa" onclick="confirmDelete(@sp.SanPhamID, '@sp.TenSP')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Thêm / Sửa Sản Phẩm (Dành cho Admin) -->
+@if (isAdmin)
+{
+    <div class="modal fade" id="modalSanPham" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <form method="post" action="/SanPham/Save">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SanPhamID" id="txtSanPhamID" value="0" />
+
+                    <div class="modal-header bg-dark text-white rounded-top-4">
+                        <h5 class="modal-title fw-bold" id="modalTitle">
+                            <i class="bi bi-box-seam me-2 text-warning"></i> Thêm sản phẩm mới
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Mã sản phẩm <span class="text-danger">*</span></label>
+                                <input type="text" name="MaSP" id="txtMaSP" class="form-control" placeholder="VD: SP013" required />
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Tên sản phẩm <span class="text-danger">*</span></label>
+                                <input type="text" name="TenSP" id="txtTenSP" class="form-control" placeholder="Tên bột, bơ, kem, socola..." required />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Đơn vị tính</label>
+                                <input type="text" name="DonViTinh" id="txtDonViTinh" class="form-control" placeholder="Gói, Hộp, Túi, Cái..." value="Gói" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Danh mục</label>
+                                <select name="DanhMuc" id="selDanhMuc" class="form-select">
+                                    <option value="Bột & Men nở">Bột & Men nở</option>
+                                    <option value="Socola & Cacao">Socola & Cacao</option>
+                                    <option value="Bơ sữa & Kem">Bơ sữa & Kem</option>
+                                    <option value="Đường & Phụ gia">Đường & Phụ gia</option>
+                                    <option value="Khuôn & Dụng cụ">Khuôn & Dụng cụ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Biểu tượng (Emoji)</label>
+                                <input type="text" name="HinhAnh" id="txtHinhAnh" class="form-control" placeholder="🍰, 🍫, 🥛, 🧈, 🧁..." value="📦" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Giá nhập (VNĐ)</label>
+                                <input type="number" step="1000" name="GiaNhap" id="txtGiaNhap" class="form-control" placeholder="0" required value="0" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Giá bán lẻ (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" step="1000" name="GiaLe" id="txtGiaLe" class="form-control" placeholder="0" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Giá bán sỉ (≥ 10 sp) <span class="text-danger">*</span></label>
+                                <input type="number" step="1000" name="GiaSi" id="txtGiaSi" class="form-control" placeholder="0" required />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Số lượng tồn kho ban đầu</label>
+                                <input type="number" name="TonKho" id="txtTonKho" class="form-control" placeholder="0" value="0" required />
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle text-primary"></i> Khi nhân viên bán hàng số lượng từ 10 đơn vị trở lên, hệ thống tự động áp dụng Đơn giá bán sỉ!
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-brand rounded-pill px-4">
+                            <i class="bi bi-check-lg me-1"></i> Lưu thông tin
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form ẩn để xóa sản phẩm -->
+    <form id="formDelete" method="post" action="/SanPham/Delete">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" id="deleteId" value="" />
+    </form>
+}
+
+@section Scripts {
+    <script>
+        function openCreateModal() {
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-box-seam me-2 text-warning"></i> Thêm sản phẩm mới';
+            document.getElementById('txtSanPhamID').value = '0';
+            document.getElementById('txtMaSP').value = '';
+            document.getElementById('txtTenSP').value = '';
+            document.getElementById('txtDonViTinh').value = 'Gói';
+            document.getElementById('selDanhMuc').value = 'Bột & Men nở';
+            document.getElementById('txtHinhAnh').value = '📦';
+            document.getElementById('txtGiaNhap').value = '0';
+            document.getElementById('txtGiaLe').value = '';
+            document.getElementById('txtGiaSi').value = '';
+            document.getElementById('txtTonKho').value = '0';
+        }
+
+        function openEditModal(id, ma, ten, dvt, dm, giaNhap, giaLe, giaSi, tonKho, icon) {
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil-square me-2 text-warning"></i> Cập nhật sản phẩm ' + ma;
+            document.getElementById('txtSanPhamID').value = id;
+            document.getElementById('txtMaSP').value = ma;
+            document.getElementById('txtTenSP').value = ten;
+            document.getElementById('txtDonViTinh').value = dvt || 'Gói';
+            document.getElementById('selDanhMuc').value = dm || 'Bột & Men nở';
+            document.getElementById('txtHinhAnh').value = icon || '📦';
+            document.getElementById('txtGiaNhap').value = giaNhap;
+            document.getElementById('txtGiaLe').value = giaLe;
+            document.getElementById('txtGiaSi').value = giaSi;
+            document.getElementById('txtTonKho').value = tonKho;
+
+            var modal = new bootstrap.Modal(document.getElementById('modalSanPham'));
+            modal.show();
+        }
+
+        function confirmDelete(id, name) {
+            if (confirm("Bạn có chắc chắn muốn xóa sản phẩm '" + name + "' khỏi hệ thống?")) {
+                document.getElementById('deleteId').value = id;
+                document.getElementById('formDelete').submit();
+            }
+        }
+    </script>
+}

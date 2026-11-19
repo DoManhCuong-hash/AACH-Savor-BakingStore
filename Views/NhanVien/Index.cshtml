@@ -1,0 +1,309 @@
+@model List<AachSavor.Models.NhanVien>
+@{
+    ViewData["Title"] = "Quản lý Nhân viên & Tài khoản";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-person-badge text-warning me-2"></i>Quản lý Nhân viên & Phân quyền
+        </h2>
+        <p class="text-muted mb-0">Quản lý danh sách nhân sự cửa hàng, cấp tài khoản đăng nhập và khen thưởng Thumb Up</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-brand shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalNhanVien" onclick="openCreateStaffModal()">
+            <i class="bi bi-person-plus-fill"></i> Thêm nhân viên mới
+        </button>
+    </div>
+</div>
+
+<!-- Bảng danh sách nhân viên -->
+<div class="card card-custom overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-custom table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 90px;">Mã NV</th>
+                    <th>Họ và tên</th>
+                    <th>Số điện thoại</th>
+                    <th>Địa chỉ</th>
+                    <th>Tài khoản</th>
+                    <th class="text-center">Xếp hạng</th>
+                    <th class="text-center">Vai trò</th>
+                    <th class="text-center" style="width: 170px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var nv in Model)
+                {
+                    var tk = nv.TaiKhoan;
+                    var isAdmin = tk?.VaiTro == "Admin";
+
+                    <tr>
+                        <td><span class="badge bg-light text-dark border fw-bold">NV@nv.NhanVienID.ToString("D3")</span></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle @(isAdmin ? "bg-warning text-dark" : "bg-primary text-white") fw-bold d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; font-size: 0.85rem;">
+                                    @nv.TenNV.Substring(0, 1).ToUpper()
+                                </div>
+                                <span class="fw-bold text-dark">@nv.TenNV</span>
+                            </div>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(nv.SDT))
+                            {
+                                <span><i class="bi bi-telephone text-muted me-1"></i>@nv.SDT</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">-</span>
+                            }
+                        </td>
+                        <td class="text-muted small">@(nv.DiaChi ?? "-")</td>
+                        <td>
+                            @if (tk != null)
+                            {
+                                <span class="badge bg-light text-secondary border font-monospace">@tk.TenDangNhap</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger small">Chưa cấp tài khoản</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-warning text-dark fw-bold">Rank @nv.Rank</span>
+                            <small class="text-muted d-block mt-1">@nv.DiemTichLuy điểm</small>
+                        </td>
+                        <td class="text-center">
+                            @if (isAdmin)
+                            {
+                                <span class="badge badge-role-admin px-3 py-1 rounded-pill">
+                                    <i class="bi bi-shield-lock-fill me-1"></i> Admin
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-role-staff px-3 py-1 rounded-pill">
+                                    <i class="bi bi-person me-1"></i> Staff
+                                </span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" title="Thưởng Thumb Up" onclick="openThumbUpModalQuick(@nv.NhanVienID, '@nv.TenNV')">
+                                    <i class="bi bi-hand-thumbs-up-fill"></i>
+                                </button>
+                                <button class="btn btn-outline-warning" title="Chỉnh sửa" onclick="openEditStaffModal(@nv.NhanVienID, '@nv.TenNV', '@nv.SDT', '@nv.DiaChi', '@(tk?.TenDangNhap ?? "")', '@(tk?.VaiTro ?? "Staff")')">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                @if (nv.NhanVienID != 1)
+                                {
+                                    <button class="btn btn-outline-danger" title="Xóa" onclick="confirmDeleteStaff(@nv.NhanVienID, '@nv.TenNV')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Thêm / Sửa Nhân viên -->
+<div class="modal fade" id="modalNhanVien" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" action="/NhanVien/Save">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="NhanVienID" id="txtNhanVienID" value="0" />
+
+                <div class="modal-header bg-dark text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="modalStaffTitle">
+                        <i class="bi bi-person-badge text-warning me-2"></i> Thêm nhân viên mới
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">1. Thông tin cá nhân</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Họ và tên nhân viên <span class="text-danger">*</span></label>
+                            <input type="text" name="TenNV" id="txtTenNV" class="form-control" placeholder="VD: Nguyễn Văn C" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Số điện thoại</label>
+                            <input type="text" name="SDT" id="txtStaffSDT" class="form-control" placeholder="VD: 0987111222" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Địa chỉ liên hệ</label>
+                            <input type="text" name="DiaChi" id="txtStaffDiaChi" class="form-control" placeholder="VD: Cầu Giấy, Hà Nội" />
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">2. Tài khoản truy cập hệ thống</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Tên đăng nhập <span class="text-danger">*</span></label>
+                            <input type="text" name="username" id="txtUsernameStaff" class="form-control" placeholder="VD: nguyenvanc" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Mật khẩu</label>
+                            <input type="password" name="password" id="txtPasswordStaff" class="form-control" placeholder="Mặc định: 123456" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Vai trò phân quyền</label>
+                            <select name="vaiTro" id="selVaiTro" class="form-select">
+                                <option value="Staff">Staff (Nhân viên bán hàng)</option>
+                                <option value="Admin">Admin (Chủ cửa hàng / Quản lý)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-brand rounded-pill px-4">
+                        <i class="bi bi-check-lg me-1"></i> Lưu nhân viên
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gửi Thumb Up Thưởng Nhanh -->
+<div class="modal fade" id="modalThumbUpQuick" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-hand-thumbs-up-fill text-warning me-2"></i> Thưởng Thumb Up: <span id="lblThumbUpTargetName"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="hdnThumbUpNvId" value="0">
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Lý do / Nội dung khen thưởng <span class="text-danger">*</span></label>
+                    <input type="text" id="txtQuickThumbUpDesc" class="form-control" placeholder="VD: Hỗ trợ thiếu người / Dọn tủ mát bảo quản bơ kem..." value="Thái độ phục vụ khách chu đáo, tích cực" required>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Tiền thưởng (VNĐ)</label>
+                        <select id="selQuickThumbUpMoney" class="form-select">
+                            <option value="20000">+20,000 đ</option>
+                            <option value="50000" selected>+50,000 đ</option>
+                            <option value="100000">+100,000 đ</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Điểm (+Points)</label>
+                        <select id="selQuickThumbUpPoints" class="form-select">
+                            <option value="20">+20 điểm</option>
+                            <option value="50" selected>+50 điểm</option>
+                            <option value="100">+100 điểm</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-4" onclick="submitQuickThumbUp()">
+                    <i class="bi bi-hand-thumbs-up-fill me-1"></i> Xác nhận thưởng
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Form ẩn xóa nhân viên -->
+<form id="formDeleteStaff" method="post" action="/NhanVien/Delete">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" id="deleteStaffId" value="" />
+</form>
+
+@section Scripts {
+    <script>
+        function openCreateStaffModal() {
+            document.getElementById('modalStaffTitle').innerHTML = '<i class="bi bi-person-badge text-warning me-2"></i> Thêm nhân viên mới';
+            document.getElementById('txtNhanVienID').value = '0';
+            document.getElementById('txtTenNV').value = '';
+            document.getElementById('txtStaffSDT').value = '';
+            document.getElementById('txtStaffDiaChi').value = '';
+            document.getElementById('txtUsernameStaff').value = '';
+            document.getElementById('txtPasswordStaff').value = '123456';
+            document.getElementById('selVaiTro').value = 'Staff';
+        }
+
+        function openEditStaffModal(id, ten, sdt, diachi, username, vaitro) {
+            document.getElementById('modalStaffTitle').innerHTML = '<i class="bi bi-pencil-square text-warning me-2"></i> Cập nhật nhân viên NV' + id;
+            document.getElementById('txtNhanVienID').value = id;
+            document.getElementById('txtTenNV').value = ten;
+            document.getElementById('txtStaffSDT').value = sdt || '';
+            document.getElementById('txtStaffDiaChi').value = diachi || '';
+            document.getElementById('txtUsernameStaff').value = username || '';
+            document.getElementById('txtPasswordStaff').value = '';
+            document.getElementById('selVaiTro').value = vaitro || 'Staff';
+
+            new bootstrap.Modal(document.getElementById('modalNhanVien')).show();
+        }
+
+        function confirmDeleteStaff(id, name) {
+            if (confirm("Bạn có chắc chắn muốn xóa nhân viên '" + name + "' cùng tài khoản đăng nhập?")) {
+                document.getElementById('deleteStaffId').value = id;
+                document.getElementById('formDeleteStaff').submit();
+            }
+        }
+
+        function openThumbUpModalQuick(id, name) {
+            document.getElementById('hdnThumbUpNvId').value = id;
+            document.getElementById('lblThumbUpTargetName').innerText = name;
+            new bootstrap.Modal(document.getElementById('modalThumbUpQuick')).show();
+        }
+
+        async function submitQuickThumbUp() {
+            const nvId = parseInt(document.getElementById('hdnThumbUpNvId').value);
+            const content = document.getElementById('txtQuickThumbUpDesc').value.trim();
+            const money = parseFloat(document.getElementById('selQuickThumbUpMoney').value) || 50000;
+            const points = parseInt(document.getElementById('selQuickThumbUpPoints').value) || 50;
+
+            if (!content) {
+                alert('Vui lòng nhập lý do khen thưởng!');
+                return;
+            }
+
+            try {
+                const res = await fetch('/Home/SendThumbUp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        NhanVienID: nvId,
+                        NoiDung: content,
+                        TienThuong: money,
+                        DiemThuong: points
+                    })
+                });
+
+                if (!res.ok) {
+                    alert('Lỗi máy chủ (' + res.status + '): Không thể gửi khen thưởng.');
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            } catch (err) {
+                alert('Lỗi kết nối máy chủ: ' + err);
+            }
+        }
+    </script>
+}

@@ -1,0 +1,316 @@
+@model AachSavor.Models.TaoChotCaViewModel
+@{
+    ViewData["Title"] = "Chốt Doanh Thu Cuối Ca Trực (Sale Report)";
+    var tenNhanVien = ViewBag.TenNhanVien as string ?? "Thu ngân";
+    var soDon = ViewBag.SoDonTrongCa as int? ?? 0;
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <a href="/ChotCa" class="text-decoration-none text-muted small"><i class="bi bi-arrow-left"></i> Quay lại danh sách ca</a>
+                <h2 class="fw-bold text-dark mt-1 mb-0">Chốt Doanh Thu Cuối Ca Trực</h2>
+                <small class="text-muted">Create Sale Report - Đối soát tiền két và doanh thu cuối ca</small>
+            </div>
+            <div>
+                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-semibold">
+                    <i class="bi bi-calendar-event me-1"></i> @DateTime.Now.ToString("dd/MM/yyyy")
+                </span>
+            </div>
+        </div>
+
+        <!-- Khung form chính theo phong cách ảnh mẫu Abby / 4handy nhưng hiện đại hơn -->
+        <div class="card card-custom p-4 p-md-4 shadow-sm border-0" style="background: #18181b; color: #f4f4f5; border-radius: 20px;">
+            <form method="post" action="/ChotCa/Create" id="formChotCa">
+                @Html.AntiForgeryToken()
+
+                <!-- 1. THÔNG TIN CA TRỰC -->
+                <div class="pb-3 border-bottom border-secondary mb-3">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted text-uppercase fw-semibold">Cơ sở:</label>
+                            <input type="text" name="CoSo" class="form-control form-control-sm bg-dark text-white border-secondary" value="@Model.CoSo" readonly />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted text-uppercase fw-semibold">Ca trực:</label>
+                            <select name="CaTruc" class="form-select form-select-sm bg-dark text-white border-secondary" id="selCaTruc">
+                                <option value="Sáng" selected="@(Model.CaTruc == "Sáng")">Ca Sáng (06:00 - 14:00)</option>
+                                <option value="Chiều" selected="@(Model.CaTruc == "Chiều")">Ca Chiều (14:00 - 22:00)</option>
+                                <option value="Tối" selected="@(Model.CaTruc == "Tối")">Ca Tối (22:00 - 06:00)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted text-uppercase fw-semibold">Nhiệt độ tủ mát (°C):</label>
+                            <input type="text" name="NhietDoTuMat" class="form-control form-control-sm bg-dark text-white border-secondary" value="@Model.NhietDoTuMat" placeholder="VD: 3.5°C" required />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. THU NGÂN & CUSTOMER REQUEST -->
+                <div class="pb-3 border-bottom border-secondary mb-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="small text-muted text-uppercase fw-semibold mb-1">Thu ngân thực hiện:</div>
+                            <div class="fw-bold text-warning fs-6">
+                                <i class="bi bi-person-circle me-1"></i> @tenNhanVien
+                            </div>
+                            <small class="text-white-50">Đã phục vụ @soDon đơn hàng trong ngày hôm nay</small>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted text-uppercase fw-semibold mb-1">Customer Request:</div>
+                            <div class="text-white-50 small">Không có khiếu nại phát sinh từ khách hàng.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. CÁC KHOẢN CHI PHÍ PHÁT SINH TRONG CA -->
+                <div class="pb-3 border-bottom border-secondary mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted text-uppercase fw-semibold">Các khoản chi trích từ két thu ngân:</span>
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2" onclick="toggleExpenseInput()">
+                            <i class="bi bi-plus"></i> Thêm khoản chi
+                        </button>
+                    </div>
+
+                    <div id="expenseInputContainer" class="p-3 bg-dark rounded border border-secondary mb-2 d-none">
+                        <div class="row g-2">
+                            <div class="col-md-7">
+                                <input type="text" id="txtExpenseDesc" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Mô tả khoản chi (VD: Mua đá lạnh bảo quản bơ kem, mua túi...)">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" id="txtExpenseAmount" step="1000" class="form-control form-control-sm bg-dark text-white border-secondary text-end" placeholder="Số tiền (đ)">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-warning w-100 fw-bold" onclick="addExpenseItem()">Thêm</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="ChiPhiMoTa" id="hiddenChiPhiMoTa" value="@Model.ChiPhiMoTa" />
+                    <div id="expenseListText" class="small text-white-50">
+                        Chưa có khoản chi nào được thêm.
+                    </div>
+                </div>
+
+                <!-- 4. PHẦN TỔNG KẾT TÀI CHÍNH (THEO ẢNH CHỤP 4HANDY / ABBY) -->
+                <div class="mb-4">
+                    <h5 class="fw-bold text-white mb-3"><i class="bi bi-calculator text-warning me-2"></i>Tổng kết</h5>
+
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 fw-semibold">Tiền lẻ đầu ca trực:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="TienLeDauCa" id="numTienLe" class="form-control bg-dark text-white text-end fw-bold border-secondary" value="@Model.TienLeDauCa" oninput="recalculateSummary()" required>
+                                <span class="input-group-text bg-dark text-white-50 border-secondary">VNĐ</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-12 text-sm-end">
+                            <small class="text-white-50 fst-italic">Trường hợp sai tiền lẻ đầu ca vui lòng liên hệ team Kế toán</small>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 text-success fw-semibold">+ Tiền hàng:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="TienHang" id="numTienHang" class="form-control bg-dark text-success text-end fw-bold border-secondary" value="@Model.TienHang" oninput="recalculateSummary()" required>
+                                <span class="input-group-text bg-dark text-white-50 border-secondary">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 fw-semibold">+ Chênh lệch ship:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="ChenhLechShip" id="numChenhLechShip" class="form-control bg-dark text-white text-end border-secondary" value="@Model.ChenhLechShip" oninput="recalculateSummary()">
+                                <span class="input-group-text bg-dark text-white-50 border-secondary">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 text-danger fw-semibold">- Chi phí:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="ChiPhi" id="numChiPhi" class="form-control bg-dark text-danger text-end border-secondary" value="@Model.ChiPhi" oninput="recalculateSummary()">
+                                <span class="input-group-text bg-dark text-white-50 border-secondary">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 fw-semibold">- Chiết khấu đối tác:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="ChietKhauDoiTac" id="numChietKhau" class="form-control bg-dark text-white text-end border-secondary" value="@Model.ChietKhauDoiTac" oninput="recalculateSummary()">
+                                <span class="input-group-text bg-dark text-white-50 border-secondary">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 fw-semibold">- Phải thu sau từ đối tác:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="PhaiThuSauDoiTac" id="numPhaiThuSau" class="form-control bg-dark text-white text-end border-secondary" value="@Model.PhaiThuSauDoiTac" oninput="recalculateSummary()">
+                                <span class="input-group-text bg-dark text-white-50 border-secondary">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-3">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 text-info fw-semibold">- Quẹt thẻ / Chuyển khoản:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="QuetTheChuyenKhoan" id="numQuetThe" class="form-control bg-dark text-info text-end border-secondary fw-semibold" value="@Model.QuetTheChuyenKhoan" oninput="recalculateSummary()">
+                                <span class="input-group-text bg-dark text-white-50 border-secondary">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-secondary my-3">
+
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 fw-bold fs-6 text-white">= Tổng tiền két cuối ca:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group">
+                                <input type="number" name="TongTienKetCuoiCa" id="numTongTienKet" class="form-control bg-dark text-warning text-end fw-bold fs-6 border-warning" value="@Model.TongTienKetCuoiCa" readonly>
+                                <span class="input-group-text bg-dark text-warning border-warning fw-bold">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-4">
+                        <div class="col-sm-5 text-sm-end">
+                            <label class="form-label mb-0 fw-bold fs-6 text-success">Tổng tiền cần chuyển:</label>
+                        </div>
+                        <div class="col-sm-5">
+                            <div class="input-group">
+                                <input type="number" name="TongTienCanChuyen" id="numTongTienCanChuyen" class="form-control bg-dark text-success text-end fw-bold fs-6 border-success" value="@Model.TongTienCanChuyen" readonly>
+                                <span class="input-group-text bg-dark text-success border-success fw-bold">VNĐ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DÒNG CẢNH BÁO MÀU ĐỎ THEO HÌNH ẢNH MẪU -->
+                    <div class="text-center mb-3">
+                        <small class="text-danger fw-semibold">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Không được dùng tab ẩn danh để gửi Sale Report
+                        </small>
+                    </div>
+
+                    <!-- NÚT XÁC NHẬN MÀU ĐỎ NỔI BẬT THEO HÌNH ẢNH -->
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-danger px-5 py-2 fw-bold fs-6 rounded-3 shadow">
+                            Xác nhận chốt ca
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let expenses = [];
+
+        function toggleExpenseInput() {
+            const container = document.getElementById('expenseInputContainer');
+            container.classList.toggle('d-none');
+        }
+
+        function addExpenseItem() {
+            const desc = document.getElementById('txtExpenseDesc').value.trim();
+            const amount = parseFloat(document.getElementById('txtExpenseAmount').value) || 0;
+
+            if (!desc || amount <= 0) {
+                alert('Vui lòng nhập mô tả và số tiền chi hợp lệ!');
+                return;
+            }
+
+            expenses.push({ desc: desc, amount: amount });
+            document.getElementById('txtExpenseDesc').value = '';
+            document.getElementById('txtExpenseAmount').value = '';
+
+            renderExpenses();
+        }
+
+        function removeExpenseItem(index) {
+            expenses.splice(index, 1);
+            renderExpenses();
+        }
+
+        function renderExpenses() {
+            const textDiv = document.getElementById('expenseListText');
+            if (expenses.length === 0) {
+                textDiv.innerHTML = 'Chưa có khoản chi nào được thêm.';
+                document.getElementById('numChiPhi').value = 0;
+                document.getElementById('hiddenChiPhiMoTa').value = '';
+            } else {
+                let html = '<ul class="list-unstyled mb-0">';
+                let total = 0;
+                let descList = [];
+
+                expenses.forEach((item, idx) => {
+                    total += item.amount;
+                    descList.push(`${item.desc} (${item.amount.toLocaleString('vi-VN')} đ)`);
+                    html += `
+                        <li class="d-flex justify-content-between align-items-center py-1 border-bottom border-dark">
+                            <span>- ${item.desc}: <strong class="text-warning">${item.amount.toLocaleString('vi-VN')} đ</strong></span>
+                            <button type="button" class="btn btn-sm text-danger p-0 border-0" onclick="removeExpenseItem(${idx})">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                textDiv.innerHTML = html;
+                document.getElementById('numChiPhi').value = total;
+                document.getElementById('hiddenChiPhiMoTa').value = descList.join('; ');
+            }
+
+            recalculateSummary();
+        }
+
+        // Tự động tính toán lại tổng tiền két cuối ca & tiền cần chuyển
+        function recalculateSummary() {
+            const tienLe = parseFloat(document.getElementById('numTienLe').value) || 0;
+            const tienHang = parseFloat(document.getElementById('numTienHang').value) || 0;
+            const chenhLechShip = parseFloat(document.getElementById('numChenhLechShip').value) || 0;
+            const chiPhi = parseFloat(document.getElementById('numChiPhi').value) || 0;
+            const chietKhau = parseFloat(document.getElementById('numChietKhau').value) || 0;
+            const phaiThuSau = parseFloat(document.getElementById('numPhaiThuSau').value) || 0;
+            const quetThe = parseFloat(document.getElementById('numQuetThe').value) || 0;
+
+            // = Tổng tiền két cuối ca = Tiền lẻ + Tiền hàng + Chênh lệch ship - Chi phí - Chiết khấu - Phải thu sau - Quẹt thẻ
+            const tongTienKet = tienLe + tienHang + chenhLechShip - chiPhi - chietKhau - phaiThuSau - quetThe;
+            // Tổng tiền cần chuyển = Tiền két - Tiền lẻ đầu ca (tiền mặt thu được để bàn giao)
+            const tongTienCanChuyen = Math.max(0, tongTienKet - tienLe);
+
+            document.getElementById('numTongTienKet').value = tongTienKet;
+            document.getElementById('numTongTienCanChuyen').value = tongTienCanChuyen;
+        }
+
+        // Chạy tính toán lần đầu khi mở trang
+        recalculateSummary();
+    </script>
+}
